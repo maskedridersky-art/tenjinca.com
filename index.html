@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>漢字クロス・タクティクス - 均衡・完全版</title>
+    <style>
+        :root { --bg: #0a0a0a; --gold: #d4af37; --tile: #1a1c20; --player: #3498db; --enemy: #e74c3c; --waza: #ff9800; }
+        html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: var(--bg); color: #fff; font-family: 'Sawarabi Mincho', serif; }
+        #app { display: flex; flex-direction: column; width: 100%; max-width: 500px; height: 100vh; margin: 0 auto; border: 2px solid var(--gold); box-sizing: border-box; background: #000; position: relative; }
+        .header { flex: 0 0 60px; padding: 0 15px; display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.8); border-bottom: 2px solid var(--gold); }
+        .deck-count { font-size: 20px; font-weight: bold; color: var(--gold); }
+        #grid-container { flex: 1; display: flex; align-items: center; justify-content: center; padding: 5px; overflow: hidden; }
+        #grid { display: grid; grid-template-columns: repeat(6, 1fr); grid-template-rows: repeat(8, 1fr); gap: 2px; width: 100%; max-height: 100%; aspect-ratio: 6 / 8; background: #333; padding: 3px; }
+        .cell { background: var(--tile); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; font-weight: bold; color: #fff; }
+        .cell.highlight { background: rgba(212, 175, 55, 0.3); box-shadow: inset 0 0 8px var(--gold); }
+        .cell.occupied { background: #eee; color: #000; }
+        .cell.player-mark { border: 2px solid var(--player); }
+        .cell.enemy-mark { border: 2px solid var(--enemy); }
+        .cell.combo-hit { background: #ffff00 !important; color: #000; animation: flash 0.5s infinite alternate; }
+        @keyframes flash { from { transform: scale(1); } to { transform: scale(1.05); } }
+        .log { flex: 0 0 50px; background: #111; color: var(--gold); font-size: 13px; display: flex; align-items: center; justify-content: center; padding: 0 10px; border-top: 1px solid var(--gold); text-align: center; }
+        .hand { flex: 0 0 110px; display: flex; justify-content: center; align-items: center; gap: 6px; background: #000; padding: 5px; border-top: 1px solid var(--gold); }
+        .card { width: 60px; height: 90px; background: #222; border: 1px solid var(--gold); border-radius: 4px; font-size: 24px; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
+        .card.waza { background: linear-gradient(135deg, #d35400, #ff9800); color: white; font-size: 10px; font-weight: bold; text-align: center; line-height: 1.2; }
+        .card.selected { transform: translateY(-10px); box-shadow: 0 0 15px var(--gold); background: #444; }
+        #effect-overlay { position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); font-size: 40px; font-weight: bold; color: #fff; pointer-events: none; z-index: 100; text-shadow: 0 0 15px var(--gold); opacity: 0; transition: 0.5s; }
+        #victory-screen { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 1000; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+        .victory-text { font-size: 50px; color: var(--gold); text-shadow: 0 0 20px var(--gold); }
+    </style>
+</head>
+<body>
+<div id="app">
+    <div id="victory-screen">
+        <div id="result-title" class="victory-text">判定</div>
+        <div id="result-msg" style="color:#fff; margin:10px;"></div>
+        <button onclick="location.reload()" style="margin-top:20px; padding:12px 24px; background:var(--gold); border:none; border-radius:4px; font-weight:bold; cursor:pointer;">再戦</button>
+    </div>
+    <div id="effect-overlay"></div>
+    <div class="header">
+        <div>自軍: <span id="p-deck" class="deck-count">30</span></div>
+        <div style="font-size:10px; color:var(--gold); text-align:center;">命名・水行・天気 解放</div>
+        <div>敵軍: <span id="e-deck" class="deck-count">30</span></div>
+    </div>
+    <div id="grid-container"><div id="grid"></div></div>
+    <div id="log" class="log">熟語を作って相手の山札を削れ。</div>
+    <div class="hand" id="hand"></div>
+</div>
+
+<script>
+const kanjiSource = ["鉄", "銀", "神", "氷", "流", "運", "命", "波", "界", "開", "心", "山", "水", "力", "信", "平", "行", "定", "地", "球", "天", "気", "名", "前"];
+const dictionary = [
+    "天気", "命名", "水行", "名天", "前天", "気球", "気前", "銀山", "水心", "山水", "天平", "天地", "平信", "山地", "水運", "水平", "神前", "流行", "鉄球", "運行", "名山", "名前",
+    "信心", "平行", "銀行", "鉄板", "鉄橋", "鉄人", "銀河", "神主", "神道", "神風", "天神", "氷山", "氷水", "流氷", "流水", "運命", "天命", "開運", "生命", "世界", "天界", "地界", "道路", "水路", "回路", "開山", "開国", "開始", "平和", "大和", "和風", "和心", "安心", "中心", "火力", "水力", "全力", "気力", "平地", "平日", "進行", "行人", "石板", "小石", "地名", "地球", "電球", "水銀", "大山", "小山"
+];
+
+const wazaDefs = [{name:"火炎放射", p:5, t:"atk"}, {name:"鍛冶屋の魂", p:4, t:"heal"}, {name:"神隠し", p:3, t:"atk"}];
+
+function createDeck() {
+    let d = []; let kanjiPool = []; let counts = {};
+    while(kanjiPool.length < 27) {
+        let k = kanjiSource[Math.floor(Math.random()*kanjiSource.length)];
+        counts[k] = (counts[k] || 0) + 1;
+        if(counts[k] <= 2) kanjiPool.push({t:k, type:'kanji'});
+    }
+    let wazaPool = wazaDefs.map(w => ({t:w.name, type:'waza'}));
+    d = [...kanjiPool, ...wazaPool];
+    return d.sort(() => Math.random() - 0.5);
+}
+
+let myDeck = createDeck(), enemyDeckSize = 30, hpP = 30;
+let handP = [], board = Array(8).fill().map(() => Array(6).fill(null));
+let selectedIdx = null, isFirst = true, occupiedCount = 0;
+
+function init() {
+    const grid = document.getElementById('grid');
+    grid.innerHTML = '';
+    for (let r = 0; r < 8; r++) {
+        for (let c = 0; c < 6; c++) {
+            const cell = document.createElement('div');
+            cell.className = 'cell'; cell.id = `c-${r}-${c}`;
+            cell.onclick = () => onCellClick(r, c);
+            grid.appendChild(cell);
+        }
+    }
+    for(let i=0; i<5; i++) draw();
+    renderHand();
+    updateUI();
+}
+
+function draw() { if(handP.length < 5 && myDeck.length > 0) handP.push(myDeck.shift()); }
+
+function renderHand() {
+    const el = document.getElementById('hand'); el.innerHTML = '';
+    handP.forEach((card, i) => {
+        const div = document.createElement('div');
+        div.className = `card ${card.type==='waza'?'waza':''} ${selectedIdx===i?'selected':''}`;
+        div.innerText = card.t;
+        div.onclick = () => {
+            if(card.type==='waza') playWaza(card, i);
+            else { selectedIdx = i; renderHand(); highlight(); }
+        };
+        el.appendChild(div);
+    });
+}
+
+function highlight() {
+    for(let r=0; r<8; r++) for(let c=0; c<6; c++) {
+        const el = document.getElementById(`c-${r}-${c}`);
+        el.classList.remove('highlight');
+        if(selectedIdx!==null && !board[r][c] && (isFirst?r>=6:hasNeighbor(r,c))) el.classList.add('highlight');
+    }
+}
+
+function hasNeighbor(r, c) { return [[-1,0],[1,0],[0,-1],[0,1]].some(([dr,dc])=>{
+    let nr=r+dr, nc=c+dc; return nr>=0&&nr<8&&nc>=0&&nc<6&&board[nr][nc];
+});}
+
+function onCellClick(r, c) {
+    const sel = handP[selectedIdx];
+    if(!sel || board[r][c] || (isFirst&&r<6) || (!isFirst&&!hasNeighbor(r,c))) return;
+
+    board[r][c] = sel.t; occupiedCount++;
+    const el = document.getElementById(`c-${r}-${c}`);
+    el.innerText = sel.t; el.classList.add('occupied', 'player-mark');
+
+    let dmg = 0;
+    [[-1,0],[1,0],[0,-1],[0,1]].forEach(([dr,dc]) => {
+        let nr=r+dr, nc=c+dc;
+        if(nr>=0&&nr<8&&nc>=0&&nc<6&&board[nr][nc]) {
+            let w1 = sel.t+board[nr][nc], w2 = board[nr][nc]+sel.t;
+            if(dictionary.includes(w1) || dictionary.includes(w2)) {
+                dmg += 2;
+                el.classList.add('combo-hit'); document.getElementById(`c-${nr}-${nc}`).classList.add('combo-hit');
+            }
+        }
+    });
+
+    if(dmg > 0) { enemyDeckSize -= dmg; showEffect(`${dmg}枚削った！`); }
+    
+    handP.splice(selectedIdx, 1); selectedIdx = null; isFirst = false;
+    updateUI(); if(!checkEnd()) setTimeout(enemyTurn, 600);
+}
+
+function playWaza(card, idx) {
+    const w = wazaDefs.find(v => v.name === card.t);
+    showEffect(w.name);
+    if(w.t === 'atk') enemyDeckSize -= w.p;
+    else hpP = Math.min(30, hpP + w.p);
+    handP.splice(idx, 1); draw(); renderHand(); updateUI(); checkEnd();
+    setTimeout(enemyTurn, 600);
+}
+
+function enemyTurn() {
+    let moves = [];
+    for(let r=0; r<8; r++) for(let c=0; c<6; c++) if(!board[r][c]&&hasNeighbor(r,c)) moves.push({r,c});
+    if(moves.length) {
+        const m = moves[Math.floor(Math.random()*moves.length)];
+        const k = kanjiSource[Math.floor(Math.random()*kanjiSource.length)];
+        board[m.r][m.c] = k; occupiedCount++;
+        const el = document.getElementById(`c-${m.r}-${m.c}`);
+        el.innerText = k; el.classList.add('occupied', 'enemy-mark');
+        if(Math.random() < 0.2) { hpP -= 2; showEffect("敵の熟語！"); }
+    }
+    draw(); renderHand(); updateUI(); checkEnd();
+}
+
+function showEffect(t) {
+    const o = document.getElementById('effect-overlay'); o.innerText = t; o.style.opacity = 1;
+    setTimeout(() => o.style.opacity = 0, 800);
+}
+
+function updateUI() {
+    document.getElementById('p-deck').innerText = Math.max(0, hpP);
+    document.getElementById('e-deck').innerText = Math.max(0, enemyDeckSize);
+}
+
+function checkEnd() {
+    const isBoardFull = occupiedCount >= 48;
+    const isOneDead = (hpP <= 0 || enemyDeckSize <= 0);
+    if(isBoardFull || isOneDead) {
+        const win = hpP > enemyDeckSize;
+        document.getElementById('victory-screen').style.display='flex';
+        document.getElementById('result-title').innerText = win ? "完全勝利" : "敗北";
+        document.getElementById('result-title').style.color = win ? "var(--gold)" : "#e74c3c";
+        document.getElementById('result-msg').innerText = isBoardFull ? "全マス埋没。判定決着！" : "山札が尽きました。";
+        return true;
+    }
+    return false;
+}
+init();
+</script>
+</body>
+</html>
