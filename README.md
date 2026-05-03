@@ -1,1 +1,1 @@
-# tenjinca.com
+# kanji cross burst.com
