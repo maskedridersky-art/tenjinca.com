@@ -2,193 +2,280 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>漢字クロス・タクティクス - 均衡・完全版</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>TENJINCA - エバスキル修正版</title>
     <style>
-        :root { --bg: #0a0a0a; --gold: #d4af37; --tile: #1a1c20; --player: #3498db; --enemy: #e74c3c; --waza: #ff9800; }
-        html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: var(--bg); color: #fff; font-family: 'Sawarabi Mincho', serif; }
-        #app { display: flex; flex-direction: column; width: 100%; max-width: 500px; height: 100vh; margin: 0 auto; border: 2px solid var(--gold); box-sizing: border-box; background: #000; position: relative; }
-        .header { flex: 0 0 60px; padding: 0 15px; display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.8); border-bottom: 2px solid var(--gold); }
-        .deck-count { font-size: 20px; font-weight: bold; color: var(--gold); }
-        #grid-container { flex: 1; display: flex; align-items: center; justify-content: center; padding: 5px; overflow: hidden; }
-        #grid { display: grid; grid-template-columns: repeat(6, 1fr); grid-template-rows: repeat(8, 1fr); gap: 2px; width: 100%; max-height: 100%; aspect-ratio: 6 / 8; background: #333; padding: 3px; }
-        .cell { background: var(--tile); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; font-weight: bold; color: #fff; }
-        .cell.highlight { background: rgba(212, 175, 55, 0.3); box-shadow: inset 0 0 8px var(--gold); }
-        .cell.occupied { background: #eee; color: #000; }
-        .cell.player-mark { border: 2px solid var(--player); }
-        .cell.enemy-mark { border: 2px solid var(--enemy); }
-        .cell.combo-hit { background: #ffff00 !important; color: #000; animation: flash 0.5s infinite alternate; }
-        @keyframes flash { from { transform: scale(1); } to { transform: scale(1.05); } }
-        .log { flex: 0 0 50px; background: #111; color: var(--gold); font-size: 13px; display: flex; align-items: center; justify-content: center; padding: 0 10px; border-top: 1px solid var(--gold); text-align: center; }
-        .hand { flex: 0 0 110px; display: flex; justify-content: center; align-items: center; gap: 6px; background: #000; padding: 5px; border-top: 1px solid var(--gold); }
-        .card { width: 60px; height: 90px; background: #222; border: 1px solid var(--gold); border-radius: 4px; font-size: 24px; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
-        .card.waza { background: linear-gradient(135deg, #d35400, #ff9800); color: white; font-size: 10px; font-weight: bold; text-align: center; line-height: 1.2; }
-        .card.selected { transform: translateY(-10px); box-shadow: 0 0 15px var(--gold); background: #444; }
-        #effect-overlay { position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); font-size: 40px; font-weight: bold; color: #fff; pointer-events: none; z-index: 100; text-shadow: 0 0 15px var(--gold); opacity: 0; transition: 0.5s; }
-        #victory-screen { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 1000; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
-        .victory-text { font-size: 50px; color: var(--gold); text-shadow: 0 0 20px var(--gold); }
+        :root { --fire: #ff5252; --water: #2196f3; --wood: #4caf50; --gold: #d4af37; }
+        body { font-family: sans-serif; background: #263238; margin: 0; padding: 5px; color: white; user-select: none; }
+        .game-container { max-width: 900px; margin: 0 auto; display: flex; flex-direction: column; gap: 5px; }
+        .row { display: flex; gap: 5px; justify-content: center; width: 100%; }
+        .zone { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3); border-radius: 8px; position: relative; padding: 22px 5px 5px; min-height: 120px; display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; align-items: center; }
+        .zone::before { content: attr(data-label); position: absolute; top: 3px; left: 8px; font-size: 10px; color: #ccc; font-weight: bold; }
+        .stg-zone { flex: 4; background: rgba(0,0,0,0.2); }
+        .hand-zone { flex: 5; background: rgba(0,0,0,0.3); border: 1px solid var(--gold); }
+        .stack-zone { width: 85px; flex: none; display: flex; justify-content: center; align-items: center; }
+        .card { width: 75px; height: 110px; border: 2px solid #333; border-radius: 5px; background: #fff; color: #333; cursor: pointer; position: relative; overflow: hidden; box-shadow: 2px 2px 5px rgba(0,0,0,0.5); }
+        .card.done { filter: grayscale(1) brightness(0.6); }
+        .card img { width: 100%; height: 40px; object-fit: cover; pointer-events: none; }
+        .card-info { padding: 2px; font-size: 8px; text-align: center; font-weight: bold; line-height: 1.2; }
+        .card-cost { position: absolute; top: 1px; left: 1px; background: #000; color: #fff; border-radius: 50%; width: 16px; height: 16px; font-size: 10px; display: flex; align-items: center; justify-content: center; border: 1px solid #fff; z-index: 5;}
+        .card-rare { position: absolute; top: 1px; right: 1px; font-size: 8px; color: var(--gold); background: rgba(0,0,0,0.8); padding: 0 2px; border-radius: 2px; z-index: 5;}
+        .card.stack-top { background: #455a64; color: white; border: 2px solid #fff; }
+        .stack-count { position: absolute; bottom: 5px; right: 5px; background: rgba(0,0,0,0.8); color: gold; padding: 2px 5px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+        .wall-card { background: #78909c !important; color: white !important; display: flex; align-items: center; justify-content: center; font-size: 10px; }
+        #log-area { background: #000; color: #0f0; padding: 8px; border-radius: 5px; font-size: 12px; height: 35px; display: flex; align-items: center; justify-content: center; border: 1px solid #0f0; text-align: center; }
+        .controls { display: flex; gap: 10px; align-items: center; padding: 5px; background: #37474f; border-radius: 8px; }
+        #menu-box { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; color: #333; border-radius: 10px; padding: 15px; width: 260px; z-index: 1000; display: none; box-shadow: 0 0 50px rgba(0,0,0,0.8); }
+        .m-btn { width: 100%; margin: 5px 0; padding: 10px; font-weight: bold; border-radius: 5px; cursor: pointer; border: 1px solid #ccc; background: #f8f8f8; }
+        #res-scr { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 2000; }
     </style>
 </head>
 <body>
-<div id="app">
-    <div id="victory-screen">
-        <div id="result-title" class="victory-text">判定</div>
-        <div id="result-msg" style="color:#fff; margin:10px;"></div>
-        <button onclick="location.reload()" style="margin-top:20px; padding:12px 24px; background:var(--gold); border:none; border-radius:4px; font-weight:bold; cursor:pointer;">再戦</button>
+
+<div class="game-container">
+    <div class="row">
+        <div class="zone stack-zone" id="z-a-heaven" data-label="AI天国"></div>
+        <div class="zone stack-zone" id="z-a-seisei" data-label="AI精誠"></div>
+        <div class="zone stack-zone" id="z-a-deck" data-label="AI山札"></div>
     </div>
-    <div id="effect-overlay"></div>
-    <div class="header">
-        <div>自軍: <span id="p-deck" class="deck-count">30</span></div>
-        <div style="font-size:10px; color:var(--gold); text-align:center;">命名・水行・天気 解放</div>
-        <div>敵軍: <span id="e-deck" class="deck-count">30</span></div>
+    <div class="row">
+        <div class="zone stack-zone" id="z-a-wall" data-label="心の壁"></div>
+        <div class="zone stg-zone" id="z-a-stg" data-label="AIステージ"></div>
     </div>
-    <div id="grid-container"><div id="grid"></div></div>
-    <div id="log" class="log">熟語を作って相手の山札を削れ。</div>
-    <div class="hand" id="hand"></div>
+    <div id="log-area">「神の花嫁」：敵がいれば一撃復帰、いなければ心の壁へサラン！</div>
+    <div class="controls">
+        <div id="p-stats" style="flex:1; font-size:12px;"></div>
+        <button onclick="G.draw()" id="btn-draw" style="background:#1e88e5; color:white; font-weight:bold; padding:8px 12px; border:none; border-radius:4px;">ドロー</button>
+        <button onclick="G.endTurn()" style="background:#43a047; color:white; font-weight:bold; padding:8px 12px; border:none; border-radius:4px;">ターン終了</button>
+    </div>
+    <div class="row">
+        <div class="zone stg-zone" id="z-p-stg" data-label="自分ステージ"></div>
+        <div class="zone stack-zone" id="z-p-wall" data-label="心の壁"></div>
+    </div>
+    <div class="row">
+        <div class="zone hand-zone" id="z-p-hand" data-label="手札"></div>
+        <div class="zone stack-zone" id="z-p-seisei" data-label="精誠"></div>
+        <div class="zone stack-zone" id="z-p-deck" data-label="山札"></div>
+        <div class="zone stack-zone" id="z-p-heaven" data-label="天国"></div>
+    </div>
 </div>
 
+<div id="menu-box"></div>
+<div id="res-scr"><h1 id="res-title" style="font-size:3em; color:gold;"></h1><button onclick="location.reload()">再戦</button></div>
+
 <script>
-const kanjiSource = ["鉄", "銀", "神", "氷", "流", "運", "命", "波", "界", "開", "心", "山", "水", "力", "信", "平", "行", "定", "地", "球", "天", "気", "名", "前"];
-const dictionary = [
-    "天気", "命名", "水行", "名天", "前天", "気球", "気前", "銀山", "水心", "山水", "天平", "天地", "平信", "山地", "水運", "水平", "神前", "流行", "鉄球", "運行", "名山", "名前",
-    "信心", "平行", "銀行", "鉄板", "鉄橋", "鉄人", "銀河", "神主", "神道", "神風", "天神", "氷山", "氷水", "流氷", "流水", "運命", "天命", "開運", "生命", "世界", "天界", "地界", "道路", "水路", "回路", "開山", "開国", "開始", "平和", "大和", "和風", "和心", "安心", "中心", "火力", "水力", "全力", "気力", "平地", "平日", "進行", "行人", "石板", "小石", "地名", "地球", "電球", "水銀", "大山", "小山"
+// (基本データは維持)
+const M = [
+    { n: "アダム", c: 1, p: 200, ms: 200, a: "木", r: "N" },
+    { n: "エバ", c: 2, p: "神の花嫁", ms: 300, a: "炎", r: "R", skill: "EVA" },
+    { n: "カイン", c: 3, p: 400, ms: 700, a: "木", r: "R" },
+    { n: "アベル", c: 3, p: 400, ms: 600, a: "炎", r: "R" },
+    { n: "ノア", c: 4, p: 700, ms: 1000, a: "水", r: "SR" },
+    { n: "セム", c: 1, p: 100, ms: 200, a: "炎", r: "N", skill: "連携" },
+    { n: "ハム", c: 1, p: 100, ms: 200, a: "炎", r: "N", skill: "連携" },
+    { n: "ヤペテ", c: 1, p: 100, ms: 200, a: "炎", r: "N", skill: "連携" },
+    { n: "アブラム", c: 2, p: 200, ms: 400, a: "水", r: "R" },
+    { n: "アブラハム", c: 6, p: 1000, ms: 1400, a: "水", r: "MR" },
+    { n: "サライ", c: 2, p: 200, ms: 300, a: "木", r: "N" },
+    { n: "イサク", c: 4, p: 600, ms: 700, a: "炎", r: "R" }
 ];
 
-const wazaDefs = [{name:"火炎放射", p:5, t:"atk"}, {name:"鍛冶屋の魂", p:4, t:"heal"}, {name:"神隠し", p:3, t:"atk"}];
-
-function createDeck() {
-    let d = []; let kanjiPool = []; let counts = {};
-    while(kanjiPool.length < 27) {
-        let k = kanjiSource[Math.floor(Math.random()*kanjiSource.length)];
-        counts[k] = (counts[k] || 0) + 1;
-        if(counts[k] <= 2) kanjiPool.push({t:k, type:'kanji'});
-    }
-    let wazaPool = wazaDefs.map(w => ({t:w.name, type:'waza'}));
-    d = [...kanjiPool, ...wazaPool];
-    return d.sort(() => Math.random() - 0.5);
-}
-
-let myDeck = createDeck(), enemyDeckSize = 30, hpP = 30;
-let handP = [], board = Array(8).fill().map(() => Array(6).fill(null));
-let selectedIdx = null, isFirst = true, occupiedCount = 0;
-
-function init() {
-    const grid = document.getElementById('grid');
-    grid.innerHTML = '';
-    for (let r = 0; r < 8; r++) {
-        for (let c = 0; c < 6; c++) {
-            const cell = document.createElement('div');
-            cell.className = 'cell'; cell.id = `c-${r}-${c}`;
-            cell.onclick = () => onCellClick(r, c);
-            grid.appendChild(cell);
+const G = {
+    s: { pD:[], pH:[], pW:5, pS:[], pStg:[], pV:[], pU:0, aD:[], aH:[], aW:5, aS:[], aStg:[], aV:[], aU:0, cur:'p', hasD:false, pSarai:0, aSarai:0 },
+    log: (m) => document.getElementById('log-area').innerText = m,
+    
+    getPower: function(card, myStg) {
+        if (card.n === "エバ") return "神の花嫁";
+        let power = card.p;
+        if (card.skill === "連携") {
+            const names = myStg.map(c => c.n);
+            if (["セム", "ハム", "ヤペテ"].some(b => b !== card.n && names.includes(b))) power += 300;
         }
-    }
-    for(let i=0; i<5; i++) draw();
-    renderHand();
-    updateUI();
-}
+        return power;
+    },
 
-function draw() { if(handP.length < 5 && myDeck.length > 0) handP.push(myDeck.shift()); }
-
-function renderHand() {
-    const el = document.getElementById('hand'); el.innerHTML = '';
-    handP.forEach((card, i) => {
-        const div = document.createElement('div');
-        div.className = `card ${card.type==='waza'?'waza':''} ${selectedIdx===i?'selected':''}`;
-        div.innerText = card.t;
-        div.onclick = () => {
-            if(card.type==='waza') playWaza(card, i);
-            else { selectedIdx = i; renderHand(); highlight(); }
-        };
-        el.appendChild(div);
-    });
-}
-
-function highlight() {
-    for(let r=0; r<8; r++) for(let c=0; c<6; c++) {
-        const el = document.getElementById(`c-${r}-${c}`);
-        el.classList.remove('highlight');
-        if(selectedIdx!==null && !board[r][c] && (isFirst?r>=6:hasNeighbor(r,c))) el.classList.add('highlight');
-    }
-}
-
-function hasNeighbor(r, c) { return [[-1,0],[1,0],[0,-1],[0,1]].some(([dr,dc])=>{
-    let nr=r+dr, nc=c+dc; return nr>=0&&nr<8&&nc>=0&&nc<6&&board[nr][nc];
-});}
-
-function onCellClick(r, c) {
-    const sel = handP[selectedIdx];
-    if(!sel || board[r][c] || (isFirst&&r<6) || (!isFirst&&!hasNeighbor(r,c))) return;
-
-    board[r][c] = sel.t; occupiedCount++;
-    const el = document.getElementById(`c-${r}-${c}`);
-    el.innerText = sel.t; el.classList.add('occupied', 'player-mark');
-
-    let dmg = 0;
-    [[-1,0],[1,0],[0,-1],[0,1]].forEach(([dr,dc]) => {
-        let nr=r+dr, nc=c+dc;
-        if(nr>=0&&nr<8&&nc>=0&&nc<6&&board[nr][nc]) {
-            let w1 = sel.t+board[nr][nc], w2 = board[nr][nc]+sel.t;
-            if(dictionary.includes(w1) || dictionary.includes(w2)) {
-                dmg += 2;
-                el.classList.add('combo-hit'); document.getElementById(`c-${nr}-${nc}`).classList.add('combo-hit');
+    createDeck: function() {
+        let deck = []; let counts = {};
+        while(deck.length < 20) {
+            let card = M[Math.floor(Math.random()*M.length)];
+            let limit = (card.r === "SR" || card.r === "MR") ? 1 : 2;
+            counts[card.n] = (counts[card.n] || 0);
+            if(counts[card.n] < limit) {
+                deck.push({...card, id:Math.random(), nowSg:0, done:false});
+                counts[card.n]++;
             }
         }
-    });
+        return deck.sort(() => Math.random() - 0.5);
+    },
 
-    if(dmg > 0) { enemyDeckSize -= dmg; showEffect(`${dmg}枚削った！`); }
+    init: function() {
+        let pFull = this.createDeck(); let aFull = this.createDeck();
+        this.s.pH = pFull.splice(0,5); pFull.splice(0,5); this.s.pD = pFull;
+        this.s.aH = aFull.splice(0,5); aFull.splice(0,5); this.s.aD = aFull;
+        this.up();
+    },
+
+    up: function() {
+        const rzNormal = (id, cards, type) => {
+            const el = document.getElementById(id); el.innerHTML = "";
+            const currentStg = id.includes('z-p-') ? this.s.pStg : this.s.aStg;
+            cards.forEach((c, i) => {
+                const div = document.createElement('div'); div.className = 'card' + (c.done?' done':'');
+                div.style.borderColor = c.a==='炎'?'var(--fire)':c.a==='水'?'var(--water)':'var(--wood)';
+                const displayPower = this.getPower(c, currentStg);
+                div.innerHTML = `<div class="card-cost">${c.c}</div><div class="card-rare">${c.r}</div><img src="https://picsum.photos/seed/${c.id}/80/40">
+                    <div class="card-info"><b>${c.n}</b><br><span style="color:blue">SG:${c.nowSg}/${c.ms}</span><br><span style="color:red">サラン:${displayPower}</span></div>`;
+                div.onclick = () => G.openM(type, i); el.appendChild(div);
+            });
+        };
+        const rzStack = (id, count, label, isWall) => {
+            const el = document.getElementById(id); el.innerHTML = "";
+            if(count <= 0) return;
+            const div = document.createElement('div');
+            div.className = isWall ? 'card wall-card' : 'card stack-top';
+            div.innerHTML = `<div style="text-align:center; margin-top:35px; font-weight:bold;">${label}</div><div class="stack-count">${count}</div>`;
+            el.appendChild(div);
+        };
+        rzNormal('z-p-hand', this.s.pH, 'hand');
+        rzNormal('z-p-stg', this.s.pStg, 'stg');
+        rzNormal('z-a-stg', this.s.aStg, 'stg');
+        rzStack('z-p-deck', this.s.pD.length, '山札');
+        rzStack('z-a-deck', this.s.aD.length, '山札');
+        rzStack('z-p-seisei', this.s.pS.length, '精誠');
+        rzStack('z-a-seisei', this.s.aS.length, '精誠');
+        rzStack('z-p-wall', this.s.pW, '心の壁', true);
+        rzStack('z-a-wall', this.s.aW, '心の壁', true);
+        rzStack('z-p-heaven', this.s.pV.length, '天国');
+        rzStack('z-a-heaven', this.s.aV.length, '天国');
+        let statStr = `精誠: ${this.s.pS.length} / 可用: ${this.s.pS.length-this.s.pU}`;
+        if(this.s.pSarai > 0) statStr += ` <span style="color:gold;">(慈愛中 ${this.s.pSarai})</span>`;
+        document.getElementById('p-stats').innerHTML = statStr;
+        document.getElementById('btn-draw').disabled = (this.s.hasD || this.s.pD.length === 0 || this.s.cur !== 'p');
+    },
+
+    draw: function() { if(this.s.pD.length > 0 && !this.s.hasD) { this.s.pH.push(this.s.pD.pop()); this.s.hasD = true; this.up(); } },
+
+    openM: function(t, i) {
+        if(this.s.cur!=='p') return;
+        const c = (t==='hand'?this.s.pH:this.s.pStg)[i]; if(!c) return;
+        let h = `<b>${c.n}</b><hr>`;
+        if(t==='hand'){
+            const finalCost = this.s.pSarai > 0 ? Math.max(0, c.c - 1) : c.c;
+            h += `<button class="m-btn" onclick="G.setS(${i})">精誠へ捧げる</button>`;
+            h += `<button class="m-btn" ${(this.s.pS.length-this.s.pU) < finalCost ? 'disabled':''} onclick="G.play(${i},${finalCost})">展開 (コスト:${finalCost})</button>`;
+        } else if(t==='stg' && !c.done){
+            // エバのメインロジック：相手がいれば強制的に除去へ、いなければ壁へ
+            if(c.skill === "EVA") {
+                if(this.s.aStg.length > 0) {
+                    h += `<button class="m-btn" onclick="G.skillEvaTarget(${i})">神の花嫁 (一撃復帰へ)</button>`;
+                } else {
+                    h += `<button class="m-btn" onclick="G.atkW(${i})">神の花嫁 (壁へサラン)</button>`;
+                }
+            } else if(typeof c.p === 'number') {
+                if(this.s.aStg.length > 0) {
+                    this.s.aStg.forEach((x,j)=> h += `<button class="m-btn" onclick="G.atk(${i},${j})">${x.n}へサラン</button>`);
+                } else { h += `<button class="m-btn" onclick="G.atkW(${i})">心の壁へサラン</button>`; }
+            }
+        }
+        h += `<button class="m-btn" onclick="G.cls()">戻る</button>`;
+        const mb = document.getElementById('menu-box'); mb.innerHTML=h; mb.style.display='block';
+    },
+
+    cls: () => document.getElementById('menu-box').style.display='none',
+    setS: function(i) { this.s.pS.push(this.s.pH.splice(i,1)[0]); this.cls(); this.up(); },
+    play: function(i, cost) { 
+        const card = this.s.pH.splice(i,1)[0];
+        this.s.pU += cost; this.s.pStg.push(card);
+        if(card.n === "サライ") { this.s.pSarai = 2; this.log("サライ：慈愛が発動！"); }
+        this.cls(); this.up(); 
+    },
+
+    // エバ専用：除去対象選択
+    skillEvaTarget: function(pi) {
+        let h = "<b>神の花嫁：復帰させる者を選択</b><hr>";
+        this.s.aStg.forEach((x,j)=> h += `<button class="m-btn" onclick="G.doEva(${pi},${j})">${x.n}</button>`);
+        document.getElementById('menu-box').innerHTML = h + `<button class="m-btn" onclick="G.cls()">戻る</button>`;
+    },
+    doEva: function(pi, ai) {
+        const target = this.s.aStg.splice(ai,1)[0];
+        this.s.aV.push(target);
+        this.s.pStg[pi].done = true;
+        this.log(`神の花嫁により、${target.n}がステージから去りました。`);
+        this.cls(); this.up();
+    },
     
-    handP.splice(selectedIdx, 1); selectedIdx = null; isFirst = false;
-    updateUI(); if(!checkEnd()) setTimeout(enemyTurn, 600);
-}
+    atk: function(pi, ai) {
+        const a = this.s.pStg[pi], t = this.s.aStg[ai];
+        const dmg = this.getPower(a, this.s.pStg);
+        if(typeof dmg !== 'number') return;
+        t.nowSg += dmg; a.done=true;
+        if(t.nowSg >= t.ms) {
+            this.s.aV.push(this.s.aStg.splice(ai,1)[0]);
+            if(this.s.aW > 0) { this.s.aW--; if(this.s.aD.length>0) this.s.aH.push(this.s.aD.pop()); }
+        }
+        this.cls(); this.up();
+    },
 
-function playWaza(card, idx) {
-    const w = wazaDefs.find(v => v.name === card.t);
-    showEffect(w.name);
-    if(w.t === 'atk') enemyDeckSize -= w.p;
-    else hpP = Math.min(30, hpP + w.p);
-    handP.splice(idx, 1); draw(); renderHand(); updateUI(); checkEnd();
-    setTimeout(enemyTurn, 600);
-}
+    atkW: function(pi) {
+        const a = this.s.pStg[pi]; a.done=true;
+        if(this.s.aW > 0) { 
+            this.s.aW--; if(this.s.aD.length>0) this.s.aH.push(this.s.aD.pop()); 
+            this.log(`${a.n}の力が心の壁に届きました！`);
+        }
+        if(this.s.aW <= 0) { document.getElementById('res-scr').style.display='flex'; document.getElementById('res-title').innerText='VICTORY'; }
+        this.cls(); this.up();
+    },
 
-function enemyTurn() {
-    let moves = [];
-    for(let r=0; r<8; r++) for(let c=0; c<6; c++) if(!board[r][c]&&hasNeighbor(r,c)) moves.push({r,c});
-    if(moves.length) {
-        const m = moves[Math.floor(Math.random()*moves.length)];
-        const k = kanjiSource[Math.floor(Math.random()*kanjiSource.length)];
-        board[m.r][m.c] = k; occupiedCount++;
-        const el = document.getElementById(`c-${m.r}-${m.c}`);
-        el.innerText = k; el.classList.add('occupied', 'enemy-mark');
-        if(Math.random() < 0.2) { hpP -= 2; showEffect("敵の熟語！"); }
+    endTurn: function() {
+        if(this.s.pSarai > 0) this.s.pSarai--;
+        this.s.pStg.forEach(c=> { c.done=false; c.nowSg=0; });
+        this.s.pU=0; this.s.hasD=false; this.s.cur='a';
+        this.log("AIのターン..."); this.up();
+        setTimeout(() => this.aiTurn(), 1000);
+    },
+
+    aiTurn: function() {
+        if(this.s.aD.length > 0) this.s.aH.push(this.s.aD.pop());
+        let avail = this.s.aS.length - this.s.aU;
+        let idx = this.s.aH.findIndex(c => (this.s.aSarai > 0 ? Math.max(0, c.c-1) : c.c) <= avail);
+        if(idx !== -1) {
+            let p = this.s.aH.splice(idx,1)[0];
+            this.s.aU += (this.s.aSarai > 0 ? Math.max(0, p.c-1) : p.c);
+            this.s.aStg.push(p);
+            if(p.n === "サライ") this.s.aSarai = 2;
+        } else if(this.s.aH.length > 0) { this.s.aS.push(this.s.aH.shift()); }
+        this.up();
+        setTimeout(() => {
+            this.s.aStg.forEach(ac => {
+                if(ac.done) return;
+                // AIエバ：キャラがいれば除去、いなければ壁
+                if(ac.skill === "EVA") {
+                    if(this.s.pStg.length > 0) {
+                        this.s.pV.push(this.s.pStg.shift());
+                        this.log("AIエバ：神の花嫁（一撃復帰）！");
+                    } else if(this.s.pW > 0) {
+                        this.s.pW--; if(this.s.pD.length>0) this.s.pH.push(this.s.pD.pop());
+                        this.log("AIエバ：神の花嫁（壁へサラン）！");
+                    }
+                    ac.done = true; return;
+                }
+                let dmg = this.getPower(ac, this.s.aStg);
+                if(typeof dmg !== 'number') return;
+                if(this.s.pStg.length > 0) {
+                    let t = this.s.pStg[0]; t.nowSg += dmg; ac.done=true;
+                    if(t.nowSg >= t.ms) { this.s.pV.push(this.s.pStg.shift()); if(this.s.pW > 0) { this.s.pW--; if(this.s.pD.length>0) this.s.pH.push(this.s.pD.pop()); } }
+                } else if(this.s.pW > 0) {
+                    this.s.pW--; ac.done=true; if(this.s.pD.length>0) this.s.pH.push(this.s.pD.pop());
+                }
+            });
+            if(this.s.pW <= 0) { document.getElementById('res-scr').style.display='flex'; document.getElementById('res-title').innerText='DEFEAT'; }
+            this.s.aStg.forEach(c => { c.done=false; c.nowSg=0; });
+            this.s.aU=0; if(this.s.aSarai > 0) this.s.aSarai--;
+            this.s.cur='p'; this.up();
+        }, 1000);
     }
-    draw(); renderHand(); updateUI(); checkEnd();
-}
-
-function showEffect(t) {
-    const o = document.getElementById('effect-overlay'); o.innerText = t; o.style.opacity = 1;
-    setTimeout(() => o.style.opacity = 0, 800);
-}
-
-function updateUI() {
-    document.getElementById('p-deck').innerText = Math.max(0, hpP);
-    document.getElementById('e-deck').innerText = Math.max(0, enemyDeckSize);
-}
-
-function checkEnd() {
-    const isBoardFull = occupiedCount >= 48;
-    const isOneDead = (hpP <= 0 || enemyDeckSize <= 0);
-    if(isBoardFull || isOneDead) {
-        const win = hpP > enemyDeckSize;
-        document.getElementById('victory-screen').style.display='flex';
-        document.getElementById('result-title').innerText = win ? "完全勝利" : "敗北";
-        document.getElementById('result-title').style.color = win ? "var(--gold)" : "#e74c3c";
-        document.getElementById('result-msg').innerText = isBoardFull ? "全マス埋没。判定決着！" : "山札が尽きました。";
-        return true;
-    }
-    return false;
-}
-init();
+};
+window.onload = () => G.init();
 </script>
 </body>
 </html>
